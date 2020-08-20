@@ -1,0 +1,4 @@
+*.nc
+*.mat
+*.html
+.DS_Store
