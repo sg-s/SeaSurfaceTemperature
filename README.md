@@ -25,4 +25,4 @@ data = S.fetch();
 `data` also contains sea surface temperatures for the entire planet at that moment in time, allowing you to make pretty plots like the one shown above.
 
 
-
+`SeaSurfaceTemperature` is smart enough to only download data when it needs to, and to cache everything locally, so don't be afraid to drop it into your script and don't worry about saving data -- it happens automatically. 
