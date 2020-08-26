@@ -14,9 +14,7 @@ S = SeaSurfaceTemperature;
 
 
 % specify where you want to get sea
-% surface temperatures from. The database
-% this uses is gridded at 5°, so don't 
-% expect fine grained data
+% surface temperatures from. 
 S.Latitude = 10
 S.Longitude = 1.2 
 
