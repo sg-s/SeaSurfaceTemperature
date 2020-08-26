@@ -6,17 +6,16 @@ classdef SeaSurfaceTemperature
 properties (SetAccess = private)
 
 	DataDir = fullfile(fileparts(which(mfilename)),'data')
-	DataURL = 'https://www1.ncdc.noaa.gov/pub/data/cmb/ersst/v5/netcdf/ersst.v5.YYYYMM.nc'
+	DataURL = 'https://www.ncei.noaa.gov/data/sea-surface-temperature-optimum-interpolation/v2.1/access/avhrr/YYYYMM/oisst-avhrr-v02r01.YYYYMMDD.nc'
 
 end % private props
 
 properties
 
-	latitute (1,1) = 42
-	longitute (1,1) = 290 % Boston harbour
+	Latitude (1,1) = 42
+	Longitude (1,1) = 290 % Boston harbour
 
-	after (1,1) datetime = datetime('01-Jan-2019')
-	before (1,1) datetime = datetime - calmonths(1)
+	Date (1,1) datetime = datetime('01-Jan-2019')
 
 end % props
 
@@ -25,7 +24,9 @@ end % props
 methods 
 
 	function self = SeaSurfaceTemperature()
-
+		if exist(self.DataDir,'dir') == 0
+			mkdir(self.DataDir)
+		end
 	end % constructor
 
 
@@ -33,60 +34,41 @@ methods
 	function data = fetch(self)
 
 
-		% make a list of the months we need
-		get_these_months = (self.after:calmonths(1):self.before)';
+		% figure out the day we need
+		[YYYYMM, YYYYMMDD] = SeaSurfaceTemperature.month2filename(self.Date);
 
 
-		% download all these months
-		for i = 1:length(get_these_months)
-
-			filename = SeaSurfaceTemperature.month2filename(get_these_months(i));
 			
-			URL = strrep(self.DataURL,'YYYYMM.nc',filename);
-			savename = fullfile(self.DataDir, filename);
+		URL = strrep(self.DataURL,'YYYYMMDD',YYYYMMDD);
+		URL = strrep(URL,'YYYYMM',YYYYMM);
 
 
-			if exist(savename,'file') ~= 2
-				disp('Downloading data from NOAA website...')
-				try
-					websave(savename,URL);
-				catch
-					warning('Could not download data from NOAA website')
-				end
+		savename = fullfile(self.DataDir, YYYYMMDD);
+		savename = [savename '.nc'];
+
+		if exist(savename,'file') ~= 2
+			disp('Downloading data from NOAA website...')
+			try
+				websave(savename,URL);
+			catch err
+				warning('Could not download data from NOAA website')
 			end
-
 		end
 
 
-		% make placeholders
-		Latitide = NaN(length(get_these_months),1);
-		Longitude  = Latitide;
-		Date = get_these_months;
-		Temperature = Latitide;
+		% read data from this file
+		lat = ncread(savename,'lat');
+		lon = ncread(savename,'lon');
+		sst = ncread(savename,'sst');
 
+		[ActualLat,latidx] = min(abs(self.Latitude - lat));
+		[ActualLon,lonidx] = min(abs(self.Longitude - lon));
 
-		for i = 1:length(get_these_months)
-			filename = SeaSurfaceTemperature.month2filename(get_these_months(i));
-			filename = fullfile(self.DataDir, filename);
-
-			% read data from this file
-			lat = ncread(filename,'lat');
-			lon = ncread(filename,'lon');
-			sst = ncread(filename,'sst');
-
-			[~,latidx]=min(abs(lat-self.latitute));
-			[~,lonidx]=min(abs(lon-self.longitute));
-
-			Temperature(i) = sst(lonidx,latidx);
-			Latitide(i) = lat(latidx);
-			Longitude(i) = lon(lonidx);
-		end
-
-		% package
-		data.Temperature = Temperature;
-		data.Longitude = Longitude;
-		data.Latitide = Latitide;
-		data.Date = Date;
+		data.Temperature = sst(lonidx,latidx);
+		data.Longitude = ActualLat;
+		data.Latitide = ActualLon;
+		data.Date = datetime(YYYYMMDD,'InputFormat','yyyyMMdd');
+		data.SST = sst;
 
 
 	end % fetch data
@@ -99,17 +81,22 @@ end % methods
 methods (Static)
 
 
-	function filename = month2filename(M)
+	function [YYYYMM, YYYYMMDD] = month2filename(M)
 
 		download_this = datevec(M);
 		YYYY = mat2str(download_this(1));
 		MM = mat2str(download_this(2));
+		DD = mat2str(download_this(3));
 		if length(MM) == 1
 			MM = ['0' MM];
 		end
 
-		filename = [YYYY MM '.nc'];
+		if length(DD) == 1
+			DD = ['0' DD];
+		end
 
+		YYYYMM = [YYYY MM];
+		YYYYMMDD = [YYYY MM DD];
 	end
 
 end % static methods

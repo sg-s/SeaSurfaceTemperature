@@ -2,3 +2,4 @@
 *.mat
 *.html
 .DS_Store
+*.sublime-workspace
